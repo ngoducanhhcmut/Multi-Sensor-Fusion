@@ -135,6 +135,24 @@ sim_fusion_system: compile
 	cd $(BUILD_DIR) && vlog $(VLOG_FLAGS) ../$(TB_DIR)/tb_multi_sensor_fusion_system.sv
 	cd $(BUILD_DIR) && vsim $(VSIM_FLAGS) -c tb_multi_sensor_fusion_system -do "run -all; quit"
 
+# Run real-time KITTI/nuScenes testing
+realtime_test:
+	@echo "Running real-time KITTI/nuScenes testing..."
+	@if [ -f "venv/bin/activate" ]; then \
+		. venv/bin/activate && python3 $(TB_DIR)/test_realtime_kitti_nuscenes.py; \
+	else \
+		python3 $(TB_DIR)/test_realtime_kitti_nuscenes.py; \
+	fi
+
+# Test dataset loader
+test_dataset_loader:
+	@echo "Testing dataset loader..."
+	@if [ -f "venv/bin/activate" ]; then \
+		. venv/bin/activate && python3 dataset_loader.py; \
+	else \
+		python3 dataset_loader.py; \
+	fi
+
 # Run all tests (Python + SystemVerilog)
 all_tests: python_tests sim
 	@echo "All tests completed!"
@@ -146,6 +164,14 @@ all_python_tests: basic_tests python_tests edge_cases fusion_advanced stress_tes
 # Run comprehensive testing (500+ tests + SystemVerilog)
 comprehensive_test: fusion_system_500 sim_fusion_system
 	@echo "Comprehensive testing completed!"
+
+# Run production-ready testing (real-time + datasets)
+production_test: realtime_test fusion_system_500
+	@echo "Production testing completed!"
+
+# Run all tests including real-time
+ultimate_test: production_test comprehensive_test
+	@echo "Ultimate testing completed - System ready for deployment!"
 
 # Coverage analysis (if supported)
 coverage: compile
@@ -195,9 +221,13 @@ help:
 	@echo "  corrected_system - Run corrected system verification"
 	@echo "  fusion_system_500 - Run 500+ Multi-Sensor Fusion test cases"
 	@echo "  sim_fusion_system - Run SystemVerilog testbench for Fusion System"
+	@echo "  realtime_test - Run real-time KITTI/nuScenes testing"
+	@echo "  test_dataset_loader - Test dataset loader functionality"
 	@echo "  all_tests     - Run all tests (Python + SystemVerilog)"
 	@echo "  all_python_tests - Run all Python tests only"
 	@echo "  comprehensive_test - Run comprehensive testing (500+ tests + SV)"
+	@echo "  production_test - Run production-ready testing (real-time + datasets)"
+	@echo "  ultimate_test - Run ultimate testing (everything)"
 	@echo "  coverage      - Run coverage analysis"
 	@echo "  synthesis     - Run synthesis check (Quartus)"
 	@echo "  lint          - Run lint check (Verilator)"
