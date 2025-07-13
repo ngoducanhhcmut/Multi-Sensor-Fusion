@@ -153,6 +153,21 @@ test_dataset_loader:
 		python3 dataset_loader.py; \
 	fi
 
+# Test ultra-fast microsecond performance
+test_microsecond:
+	@echo "Testing ultra-fast microsecond performance..."
+	@if [ -f "venv/bin/activate" ]; then \
+		. venv/bin/activate && python3 $(TB_DIR)/test_ultra_fast_microsecond.py; \
+	else \
+		python3 $(TB_DIR)/test_ultra_fast_microsecond.py; \
+	fi
+
+# Compile ultra-fast SystemVerilog
+compile_ultra_fast: $(BUILD_DIR)
+	@echo "Compiling ultra-fast SystemVerilog..."
+	cd $(BUILD_DIR) && vlib work
+	cd $(BUILD_DIR) && vlog $(VLOG_FLAGS) ../MultiSensorFusionUltraFast.v
+
 # Run all tests (Python + SystemVerilog)
 all_tests: python_tests sim
 	@echo "All tests completed!"
@@ -172,6 +187,10 @@ production_test: realtime_test fusion_system_500
 # Run all tests including real-time
 ultimate_test: production_test comprehensive_test
 	@echo "Ultimate testing completed - System ready for deployment!"
+
+# Run microsecond optimization testing
+microsecond_test: test_microsecond compile_ultra_fast
+	@echo "Microsecond optimization testing completed!"
 
 # Coverage analysis (if supported)
 coverage: compile
@@ -223,11 +242,14 @@ help:
 	@echo "  sim_fusion_system - Run SystemVerilog testbench for Fusion System"
 	@echo "  realtime_test - Run real-time KITTI/nuScenes testing"
 	@echo "  test_dataset_loader - Test dataset loader functionality"
+	@echo "  test_microsecond - Test ultra-fast microsecond performance"
+	@echo "  compile_ultra_fast - Compile ultra-fast SystemVerilog"
 	@echo "  all_tests     - Run all tests (Python + SystemVerilog)"
 	@echo "  all_python_tests - Run all Python tests only"
 	@echo "  comprehensive_test - Run comprehensive testing (500+ tests + SV)"
 	@echo "  production_test - Run production-ready testing (real-time + datasets)"
 	@echo "  ultimate_test - Run ultimate testing (everything)"
+	@echo "  microsecond_test - Run microsecond optimization testing"
 	@echo "  coverage      - Run coverage analysis"
 	@echo "  synthesis     - Run synthesis check (Quartus)"
 	@echo "  lint          - Run lint check (Verilator)"
