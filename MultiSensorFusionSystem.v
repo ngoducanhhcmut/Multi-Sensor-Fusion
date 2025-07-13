@@ -27,7 +27,10 @@ module MultiSensorFusionSystem #(
     parameter FAULT_TOLERANCE_LEVEL = 3,
     parameter ENABLE_DIAGNOSTICS = 1,
     parameter ENABLE_PIPELINE_OPTIMIZATION = 1,
-    parameter PARALLEL_PROCESSING_CORES = 4      // Increased parallelization
+    parameter PARALLEL_PROCESSING_CORES = 8,     // Increased to 8 cores
+    parameter ENABLE_DEEP_PIPELINE = 1,          // Enable deep pipeline
+    parameter PIPELINE_STAGES = 6,               // 6-stage pipeline
+    parameter CLOCK_DOMAIN_OPTIMIZATION = 1     // Multi-clock domain
 ) (
     input  logic clk,
     input  logic rst_n,
@@ -101,7 +104,7 @@ module MultiSensorFusionSystem #(
     // STAGE 1: OPTIMIZED PARALLEL SENSOR DECODERS
     // ========================================
 
-    // Parallel processing arrays for speed optimization
+    // Optimized parallel processing arrays with memory banking
     logic [CAMERA_WIDTH-1:0] camera_decoded [0:PARALLEL_PROCESSING_CORES-1];
     logic [PARALLEL_PROCESSING_CORES-1:0] camera_decoded_valid;
     logic [LIDAR_WIDTH-1:0]  lidar_decoded [0:PARALLEL_PROCESSING_CORES-1];
@@ -110,6 +113,13 @@ module MultiSensorFusionSystem #(
     logic [PARALLEL_PROCESSING_CORES-1:0] radar_filtered_valid;
     logic [IMU_WIDTH-1:0]    imu_synced [0:PARALLEL_PROCESSING_CORES-1];
     logic [PARALLEL_PROCESSING_CORES-1:0] imu_synced_valid;
+
+    // Pipeline registers for deep pipeline optimization
+    logic [CAMERA_WIDTH-1:0] camera_pipeline [0:PIPELINE_STAGES-1];
+    logic [LIDAR_WIDTH-1:0]  lidar_pipeline [0:PIPELINE_STAGES-1];
+    logic [RADAR_WIDTH-1:0]  radar_pipeline [0:PIPELINE_STAGES-1];
+    logic [IMU_WIDTH-1:0]    imu_pipeline [0:PIPELINE_STAGES-1];
+    logic [PIPELINE_STAGES-1:0] pipeline_valid;
 
     // Aggregated outputs for backward compatibility
     logic [CAMERA_WIDTH-1:0] camera_decoded_final;
@@ -124,7 +134,7 @@ module MultiSensorFusionSystem #(
     // Fault detection signals
     logic camera_fault, lidar_fault, radar_fault, imu_fault;
     
-    // Parallel Camera Decoders for speed optimization
+    // Optimized 8-core Parallel Camera Decoders with deep pipeline
     genvar i;
     generate
         for (i = 0; i < PARALLEL_PROCESSING_CORES; i++) begin : camera_decoder_array
@@ -132,16 +142,38 @@ module MultiSensorFusionSystem #(
             logic [CAMERA_WIDTH/PARALLEL_PROCESSING_CORES-1:0] camera_chunk;
             assign camera_chunk = camera_bitstream[(i+1)*CAMERA_WIDTH/PARALLEL_PROCESSING_CORES-1:i*CAMERA_WIDTH/PARALLEL_PROCESSING_CORES];
 
-            // Optimized camera decoder with pipeline stages
+            // Deep pipeline camera decoder (3 stages)
+            logic [CAMERA_WIDTH/PARALLEL_PROCESSING_CORES-1:0] camera_stage1, camera_stage2;
+            logic stage1_valid, stage2_valid;
+
             always_ff @(posedge clk or negedge rst_n) begin
                 if (!rst_n) begin
+                    camera_stage1 <= 0;
+                    camera_stage2 <= 0;
                     camera_decoded[i] <= 0;
+                    stage1_valid <= 0;
+                    stage2_valid <= 0;
                     camera_decoded_valid[i] <= 0;
                 end else begin
+                    // Pipeline Stage 1: Input buffering
                     if (camera_valid) begin
-                        // Stage 1: Input processing
-                        camera_decoded[i][CAMERA_WIDTH/PARALLEL_PROCESSING_CORES-1:0] <= camera_chunk;
-                        // Stage 2: Parallel processing (simplified H.264 decode simulation)
+                        camera_stage1 <= camera_chunk;
+                        stage1_valid <= 1;
+                    end else begin
+                        stage1_valid <= 0;
+                    end
+
+                    // Pipeline Stage 2: Preprocessing
+                    if (stage1_valid) begin
+                        camera_stage2 <= camera_stage1 ^ {CAMERA_WIDTH/PARALLEL_PROCESSING_CORES{1'b1}};
+                        stage2_valid <= 1;
+                    end else begin
+                        stage2_valid <= 0;
+                    end
+
+                    // Pipeline Stage 3: Final processing
+                    if (stage2_valid) begin
+                        camera_decoded[i][CAMERA_WIDTH/PARALLEL_PROCESSING_CORES-1:0] <= camera_stage2;
                         camera_decoded[i][CAMERA_WIDTH-1:CAMERA_WIDTH/PARALLEL_PROCESSING_CORES] <=
                             camera_bitstream[CAMERA_WIDTH-1:CAMERA_WIDTH/PARALLEL_PROCESSING_CORES] ^
                             {CAMERA_WIDTH*3/4{1'b1}};
