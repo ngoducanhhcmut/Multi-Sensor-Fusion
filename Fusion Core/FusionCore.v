@@ -15,9 +15,9 @@ module FusionCore #(
     input  logic [255:0] sensor1_raw,
     input  logic [255:0] sensor2_raw,
     input  logic [255:0] sensor3_raw,
-    input  logic [15:0] W_q [0:11][0:15],
-    input  logic [15:0] W_k [0:11][0:15],
-    input  logic [15:0] W_v [0:11][0:15],
+    input  logic [15:0] W_q [0:5][0:15],   // 6x16 weight matrices
+    input  logic [15:0] W_k [0:5][0:15],
+    input  logic [15:0] W_v [0:5][0:15],
     input  logic signed [BIT_WIDTH-1:0] fc_weights [0:OUTPUT_SIZE-1][0:INPUT_SIZE-1],
     input  logic signed [BIT_WIDTH-1:0] fc_bias [0:OUTPUT_SIZE-1],
     output logic [2047:0] fused_tensor,

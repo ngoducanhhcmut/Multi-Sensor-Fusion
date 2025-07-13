@@ -392,4 +392,102 @@ module Noise_Filter (
     end
 endmodule
 
+// Top-level Radar Feature Extractor
+module RadarFeatureExtractor (
+    input  wire         clk,
+    input  wire         rst_n,
+    input  wire [127:0] filtered_data,    // From radar filter
+    input  wire         data_valid,
+    output wire [255:0] feature_vector,   // 256-bit feature output
+    output wire         feature_valid,
+    output wire         error_flag
+);
+
+    // Internal signals
+    logic [15:0] range_data [0:7];        // 8x16-bit range data
+    logic [15:0] velocity_data [0:7];     // 8x16-bit velocity data
+    logic [7:0]  range_vector [0:15];     // Range features
+    logic [7:0]  velocity_vector [0:7];   // Velocity features
+    logic [63:0] angle_vector;            // Angle features
+    logic        range_valid, velocity_valid, angle_valid;
+
+    // Extract range and velocity data from 128-bit input
+    always_comb begin
+        for (int i = 0; i < 8; i++) begin
+            range_data[i] = filtered_data[16*i +: 16];
+            velocity_data[i] = filtered_data[16*(i+8) +: 16];
+        end
+    end
+
+    // Range processing
+    Range_Processor range_proc (
+        .clk(clk),
+        .reset(~rst_n),
+        .data_in({range_data, {120{16'h0}}}),  // Pad to 128 elements
+        .range_vector(range_vector),
+        .valid_out(range_valid),
+        .error_flag()
+    );
+
+    // Velocity processing (using Doppler FFT + Noise Filter)
+    logic [15:0] doppler_real [0:15];
+    logic [15:0] doppler_imag [0:15];
+    logic        doppler_valid;
+
+    Doppler_FFT doppler_fft (
+        .clk(clk),
+        .reset(~rst_n),
+        .range_bins({velocity_data, {8{16'h0}}}),  // Pad to 16 elements
+        .doppler_out_real(doppler_real),
+        .doppler_out_imag(doppler_imag),
+        .valid_out(doppler_valid),
+        .error_flag()
+    );
+
+    Noise_Filter noise_filt (
+        .clk(clk),
+        .reset(~rst_n),
+        .real_in(doppler_real),
+        .imag_in(doppler_imag),
+        .velocity_vector(velocity_vector),
+        .valid_out(velocity_valid),
+        .error_flag()
+    );
+
+    // Angle processing
+    AngleProcessor #(
+        .NUM_ANTENNAS(4),
+        .PHASE_WIDTH(16),
+        .ANGLE_WIDTH(64),
+        .FIXED_POINT_FRAC(48)
+    ) angle_proc (
+        .clk(clk),
+        .rst_n(rst_n),
+        .phase_data({velocity_data[3:0]}),  // Use first 4 velocity values as phase
+        .data_valid(data_valid),
+        .angle_vector(angle_vector),
+        .angle_valid(angle_valid),
+        .error_flag()
+    );
+
+    // Feature combination
+    FeatureCombiner #(
+        .RANGE_WIDTH(128),
+        .VELOCITY_WIDTH(64),
+        .ANGLE_WIDTH(64),
+        .FEATURE_WIDTH(256)
+    ) feat_combiner (
+        .clk(clk),
+        .rst_n(rst_n),
+        .range_vector({range_vector, {112{8'h0}}}),    // Pad to 128-bit
+        .velocity_vector({velocity_vector, {56{8'h0}}}), // Pad to 64-bit
+        .angle_vector(angle_vector),
+        .data_valid(range_valid & velocity_valid & angle_valid),
+        .feature_vector(feature_vector),
+        .feature_valid(feature_valid),
+        .error_flag(error_flag)
+    );
+
+endmodule
+
 
