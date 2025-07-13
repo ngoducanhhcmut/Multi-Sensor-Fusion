@@ -120,13 +120,32 @@ corrected_system:
 		python3 $(TB_DIR)/test_corrected_system.py; \
 	fi
 
+# Run 500+ comprehensive test cases for Multi-Sensor Fusion System
+fusion_system_500:
+	@echo "Running 500+ Multi-Sensor Fusion System test cases..."
+	@if [ -f "venv/bin/activate" ]; then \
+		. venv/bin/activate && python3 $(TB_DIR)/test_multi_sensor_fusion_500.py; \
+	else \
+		python3 $(TB_DIR)/test_multi_sensor_fusion_500.py; \
+	fi
+
+# Run SystemVerilog testbench for Multi-Sensor Fusion System
+sim_fusion_system: compile
+	@echo "Running SystemVerilog simulation for Multi-Sensor Fusion System..."
+	cd $(BUILD_DIR) && vlog $(VLOG_FLAGS) ../$(TB_DIR)/tb_multi_sensor_fusion_system.sv
+	cd $(BUILD_DIR) && vsim $(VSIM_FLAGS) -c tb_multi_sensor_fusion_system -do "run -all; quit"
+
 # Run all tests (Python + SystemVerilog)
 all_tests: python_tests sim
 	@echo "All tests completed!"
 
 # Run all Python tests only
-all_python_tests: basic_tests python_tests edge_cases fusion_advanced stress_tests corrected_system
+all_python_tests: basic_tests python_tests edge_cases fusion_advanced stress_tests corrected_system fusion_system_500
 	@echo "All Python tests completed!"
+
+# Run comprehensive testing (500+ tests + SystemVerilog)
+comprehensive_test: fusion_system_500 sim_fusion_system
+	@echo "Comprehensive testing completed!"
 
 # Coverage analysis (if supported)
 coverage: compile
@@ -174,8 +193,11 @@ help:
 	@echo "  fusion_advanced - Run fusion core advanced tests"
 	@echo "  stress_tests  - Run system stress tests"
 	@echo "  corrected_system - Run corrected system verification"
+	@echo "  fusion_system_500 - Run 500+ Multi-Sensor Fusion test cases"
+	@echo "  sim_fusion_system - Run SystemVerilog testbench for Fusion System"
 	@echo "  all_tests     - Run all tests (Python + SystemVerilog)"
 	@echo "  all_python_tests - Run all Python tests only"
+	@echo "  comprehensive_test - Run comprehensive testing (500+ tests + SV)"
 	@echo "  coverage      - Run coverage analysis"
 	@echo "  synthesis     - Run synthesis check (Quartus)"
 	@echo "  lint          - Run lint check (Verilator)"
