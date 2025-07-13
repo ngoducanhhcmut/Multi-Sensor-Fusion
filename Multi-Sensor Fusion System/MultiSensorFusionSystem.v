@@ -23,14 +23,16 @@ module MultiSensorFusionSystem #(
     parameter FUSION_MIN_VAL = -16384,
     parameter FUSION_MAX_VAL = 16383,
     parameter REAL_TIME_THRESHOLD = 32'd10000000, // 100ms @ 100MHz
-    parameter MICROSECOND_THRESHOLD = 32'd1000,   // 10μs @ 100MHz (optimized target)
+    parameter MICROSECOND_THRESHOLD = 32'd500,    // 5μs @ 100MHz (optimized target)
     parameter FAULT_TOLERANCE_LEVEL = 3,
     parameter ENABLE_DIAGNOSTICS = 1,
     parameter ENABLE_PIPELINE_OPTIMIZATION = 1,
-    parameter PARALLEL_PROCESSING_CORES = 8,     // Increased to 8 cores
+    parameter PARALLEL_PROCESSING_CORES = 16,    // Increased to 16 cores for better performance
     parameter ENABLE_DEEP_PIPELINE = 1,          // Enable deep pipeline
-    parameter PIPELINE_STAGES = 6,               // 6-stage pipeline
-    parameter CLOCK_DOMAIN_OPTIMIZATION = 1     // Multi-clock domain
+    parameter PIPELINE_STAGES = 8,               // 8-stage pipeline for better throughput
+    parameter CLOCK_DOMAIN_OPTIMIZATION = 1,    // Multi-clock domain
+    parameter ENABLE_BURST_MODE = 1,             // Enable burst processing
+    parameter CACHE_SIZE = 1024                  // Cache optimization
 ) (
     input  logic clk,
     input  logic rst_n,
@@ -94,6 +96,13 @@ module MultiSensorFusionSystem #(
     logic [3:0]  current_fault_count;
     logic        watchdog_timeout;
     logic        emergency_mode;
+
+    // Enhanced edge case handling
+    logic        overflow_detected;
+    logic        underflow_detected;
+    logic [3:0]  active_sensor_count;
+    logic        minimum_sensors_available;
+    logic        data_integrity_check_passed;
 
     // Performance counters
     logic [31:0] frames_processed;
@@ -510,19 +519,51 @@ module MultiSensorFusionSystem #(
     // FAULT TOLERANCE AND ERROR RECOVERY
     // ========================================
 
-    // Sensor fault detection
+    // Enhanced sensor fault detection with edge case handling
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             sensor_fault_flags <= 0;
             current_fault_count <= 0;
             error_recovery_count <= 0;
             emergency_mode <= 0;
+            overflow_detected <= 0;
+            underflow_detected <= 0;
+            active_sensor_count <= 0;
+            minimum_sensors_available <= 0;
+            data_integrity_check_passed <= 1;
         end else begin
-            // Detect sensor faults
-            camera_fault <= (camera_valid && camera_decoded == 0);
-            lidar_fault <= (lidar_valid && lidar_decoded == 0);
-            radar_fault <= (radar_valid && radar_filtered == 0);
-            imu_fault <= (imu_valid && imu_synced == 0);
+            // Enhanced sensor fault detection with overflow/underflow checks
+            camera_fault <= (camera_valid && (camera_decoded_final == 0 ||
+                           camera_bitstream > {CAMERA_WIDTH{1'b1}} - 1000)); // Overflow check
+            lidar_fault <= (lidar_valid && (lidar_decoded_final == 0 ||
+                          lidar_compressed > {LIDAR_WIDTH{1'b1}} - 100));   // Overflow check
+            radar_fault <= (radar_valid && (radar_filtered_final == 0 ||
+                          radar_raw > {RADAR_WIDTH{1'b1}} - 10));           // Overflow check
+            imu_fault <= (imu_valid && (imu_synced_final == 0 ||
+                        imu_raw > {IMU_WIDTH{1'b1}} - 10));                 // Overflow check
+
+            // Data integrity checks
+            overflow_detected <= (camera_bitstream > {CAMERA_WIDTH{1'b1}} - 1000) ||
+                               (lidar_compressed > {LIDAR_WIDTH{1'b1}} - 100) ||
+                               (radar_raw > {RADAR_WIDTH{1'b1}} - 10) ||
+                               (imu_raw > {IMU_WIDTH{1'b1}} - 10);
+
+            underflow_detected <= (camera_valid && camera_bitstream < 100) ||
+                                (lidar_valid && lidar_compressed < 10) ||
+                                (radar_valid && radar_raw < 5) ||
+                                (imu_valid && imu_raw < 5);
+
+            // Count active sensors
+            active_sensor_count <= (camera_valid && !camera_fault) +
+                                 (lidar_valid && !lidar_fault) +
+                                 (radar_valid && !radar_fault) +
+                                 (imu_valid && !imu_fault);
+
+            // Check minimum sensor requirement (at least 2 sensors)
+            minimum_sensors_available <= (active_sensor_count >= 2);
+
+            // Data integrity check
+            data_integrity_check_passed <= !overflow_detected && !underflow_detected;
 
             // Update fault flags
             sensor_fault_flags <= {4'b0, imu_fault, radar_fault, lidar_fault, camera_fault};
@@ -530,8 +571,10 @@ module MultiSensorFusionSystem #(
             // Count active faults
             current_fault_count <= camera_fault + lidar_fault + radar_fault + imu_fault;
 
-            // Emergency mode if too many faults
-            if (current_fault_count >= FAULT_TOLERANCE_LEVEL) begin
+            // Enhanced emergency mode logic
+            if (current_fault_count >= FAULT_TOLERANCE_LEVEL ||
+                !minimum_sensors_available ||
+                !data_integrity_check_passed) begin
                 emergency_mode <= 1;
                 error_recovery_count <= error_recovery_count + 1;
             end else begin
@@ -560,12 +603,15 @@ module MultiSensorFusionSystem #(
         system_health_status[7:4] = 4'b1111;
     end
 
-    // Output assignments
-    assign output_valid = all_features_valid && !emergency_mode;
-    assign error_flags = {emergency_mode, real_time_violation, 2'b00, fusion_error_code};
+    // Enhanced output assignments with edge case handling
+    assign output_valid = all_features_valid && !emergency_mode &&
+                         minimum_sensors_available && data_integrity_check_passed;
+    assign error_flags = {emergency_mode, real_time_violation, overflow_detected,
+                         underflow_detected, fusion_error_code};
     assign fault_count = current_fault_count;
     assign fault_recovery_active = emergency_mode;
-    assign sensor_status_flags = {8'h00, sensor_fault_flags};
+    assign sensor_status_flags = {active_sensor_count, minimum_sensors_available,
+                                data_integrity_check_passed, 2'b00, sensor_fault_flags};
 
     // Debug outputs (conditional compilation) - using optimized aggregated results
     generate
