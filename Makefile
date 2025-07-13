@@ -66,31 +66,67 @@ sim_gui: compile
 # Run Python tests
 python_tests:
 	@echo "Running Python test suite..."
-	python3 $(TB_DIR)/run_all_tests.py
+	@if [ -f "venv/bin/activate" ]; then \
+		echo "Using virtual environment..."; \
+		. venv/bin/activate && python3 $(TB_DIR)/run_all_tests.py; \
+	else \
+		python3 $(TB_DIR)/run_all_tests.py; \
+	fi
+
+# Run basic tests (no external dependencies)
+basic_tests:
+	@echo "Running basic tests (no external dependencies)..."
+	python3 run_basic_tests.py
+
+# Setup for Ubuntu/Debian
+setup_ubuntu:
+	@echo "Setting up for Ubuntu/Debian..."
+	chmod +x setup_ubuntu.sh
+	./setup_ubuntu.sh
 
 # Run advanced edge case tests
 edge_cases:
 	@echo "Running advanced edge case tests..."
-	python3 $(TB_DIR)/test_advanced_edge_cases.py
+	@if [ -f "venv/bin/activate" ]; then \
+		. venv/bin/activate && python3 $(TB_DIR)/test_advanced_edge_cases.py; \
+	else \
+		python3 $(TB_DIR)/test_advanced_edge_cases.py; \
+	fi
 
 # Run fusion core advanced tests
 fusion_advanced:
 	@echo "Running fusion core advanced tests..."
-	python3 $(TB_DIR)/test_fusion_core_advanced.py
+	@if [ -f "venv/bin/activate" ]; then \
+		. venv/bin/activate && python3 $(TB_DIR)/test_fusion_core_advanced.py; \
+	else \
+		python3 $(TB_DIR)/test_fusion_core_advanced.py; \
+	fi
 
 # Run stress tests
 stress_tests:
 	@echo "Running system stress tests..."
-	python3 $(TB_DIR)/test_system_stress.py
+	@if [ -f "venv/bin/activate" ]; then \
+		. venv/bin/activate && python3 $(TB_DIR)/test_system_stress.py; \
+	else \
+		python3 $(TB_DIR)/test_system_stress.py; \
+	fi
 
 # Run corrected system verification
 corrected_system:
 	@echo "Running corrected system verification..."
-	python3 $(TB_DIR)/test_corrected_system.py
+	@if [ -f "venv/bin/activate" ]; then \
+		. venv/bin/activate && python3 $(TB_DIR)/test_corrected_system.py; \
+	else \
+		python3 $(TB_DIR)/test_corrected_system.py; \
+	fi
 
 # Run all tests (Python + SystemVerilog)
 all_tests: python_tests sim
 	@echo "All tests completed!"
+
+# Run all Python tests only
+all_python_tests: basic_tests python_tests edge_cases fusion_advanced stress_tests corrected_system
+	@echo "All Python tests completed!"
 
 # Coverage analysis (if supported)
 coverage: compile
@@ -128,6 +164,8 @@ help:
 	@echo "Multi-Sensor Fusion Testing Makefile"
 	@echo ""
 	@echo "Available targets:"
+	@echo "  setup_ubuntu   - Setup environment for Ubuntu/Debian"
+	@echo "  basic_tests    - Run basic tests (no external dependencies)"
 	@echo "  compile        - Compile SystemVerilog design files"
 	@echo "  sim           - Run SystemVerilog simulation (command line)"
 	@echo "  sim_gui       - Run SystemVerilog simulation with GUI"
@@ -137,6 +175,7 @@ help:
 	@echo "  stress_tests  - Run system stress tests"
 	@echo "  corrected_system - Run corrected system verification"
 	@echo "  all_tests     - Run all tests (Python + SystemVerilog)"
+	@echo "  all_python_tests - Run all Python tests only"
 	@echo "  coverage      - Run coverage analysis"
 	@echo "  synthesis     - Run synthesis check (Quartus)"
 	@echo "  lint          - Run lint check (Verilator)"
@@ -147,9 +186,12 @@ help:
 	@echo "  SIM           - Simulator to use (questa, modelsim, vcs)"
 	@echo ""
 	@echo "Examples:"
-	@echo "  make sim                    # Run basic simulation"
-	@echo "  make sim_gui               # Run with GUI"
+	@echo "  make setup_ubuntu          # Setup for Ubuntu/Debian"
+	@echo "  make basic_tests           # Run basic tests first"
 	@echo "  make python_tests          # Run Python tests only"
+	@echo "  make all_python_tests      # Run all Python tests"
+	@echo "  make sim                   # Run basic simulation"
+	@echo "  make sim_gui               # Run with GUI"
 	@echo "  make all_tests             # Run everything"
 	@echo "  make SIM=modelsim sim      # Use ModelSim"
 
