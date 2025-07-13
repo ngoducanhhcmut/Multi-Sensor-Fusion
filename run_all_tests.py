@@ -59,7 +59,13 @@ def main():
         ("testbench/test_full_system_integration.py", "Full System Integration Test"),
 
         # Final verification
-        ("testbench/test_final_system_verification.py", "Final System Verification")
+        ("testbench/test_final_system_verification.py", "Final System Verification"),
+
+        # Advanced edge case tests
+        ("testbench/test_advanced_edge_cases.py", "Advanced Edge Cases"),
+        ("testbench/test_fusion_core_advanced.py", "Fusion Core Advanced Tests"),
+        ("testbench/test_system_stress.py", "System Stress Testing"),
+        ("testbench/test_corrected_system.py", "Corrected System Verification")
     ]
     
     # Check if all test files exist
