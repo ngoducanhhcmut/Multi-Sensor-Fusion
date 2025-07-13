@@ -190,6 +190,28 @@ make setup_ubuntu
 source setup_env.sh
 ```
 
+### Project Structure
+```
+Multi-Sensor-Fusion/
+├── Multi-Sensor Fusion System/     # 🎯 Main system integration
+│   ├── MultiSensorFusionSystem.v   # Production system module
+│   ├── MultiSensorFusionUltraFast.v # Ultra-fast variant
+│   ├── dataset_loader.py           # KITTI/nuScenes data loader
+│   ├── README.md                   # System documentation
+│   └── SYSTEM_OVERVIEW.md          # Architecture overview
+├── Camera Decoder/                 # Camera H.264/H.265 processing
+├── LiDAR Decoder/                  # Point cloud decompression
+├── Radar Filter/                   # Signal processing & filtering
+├── IMU Synchronizer/               # Inertial data synchronization
+├── Camera Feature Extractor/       # Visual feature extraction
+├── LiDAR Feature Extractor/        # 3D feature extraction
+├── Radar Feature Extractor/        # Radar feature processing
+├── Fusion Core/                    # Attention-based fusion
+├── Temporal Alignment/             # Multi-sensor synchronization
+├── testbench/                      # Comprehensive test suites
+└── README.md                       # This file
+```
+
 ### Running Tests
 ```bash
 # Latest comprehensive test suite (2,100+ test cases)

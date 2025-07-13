@@ -11,7 +11,8 @@ BUILD_DIR = build
 
 # Source files
 DESIGN_FILES = \
-	$(SRC_DIR)/MultiSensorFusionTop.v \
+	$(SRC_DIR)/Multi-Sensor\ Fusion\ System/MultiSensorFusionSystem.v \
+	$(SRC_DIR)/Multi-Sensor\ Fusion\ System/MultiSensorFusionUltraFast.v \
 	$(SRC_DIR)/Fusion\ Core/FusionCoreFull.v \
 	$(SRC_DIR)/Fusion\ Core/QKV\ Generator/QKVGenerator.v \
 	$(SRC_DIR)/Fusion\ Core/Attention\ Calculator/AttentionCalculator.v \
