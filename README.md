@@ -94,13 +94,17 @@ The system implements a **four-stage pipeline architecture** optimized for real-
 
 ### High-Performance FPGA Implementation
 
-The Multi-Sensor Fusion System achieves **excellent real-time performance** suitable for autonomous vehicle deployment:
+The **MultiSensorFusionSystem** (production module) achieves **excellent real-time performance** suitable for autonomous vehicle deployment:
 
-- **5μs target processing latency** (500 clock cycles @ 100MHz)
-- **80ns minimum pipeline latency** (8-stage pipeline)
+- **9.68ms average processing latency** with original full-resolution data
+- **80ns minimum pipeline latency** (8-stage pipeline @ 100MHz)
 - **16 parallel hardware instances** for high throughput processing
-- **100M samples/second** theoretical throughput capability
+- **Comprehensive fault tolerance** and system monitoring
 - **99.7% success rate** across 19,200+ comprehensive test cases
+
+**Note**: The system includes two modules:
+- **MultiSensorFusionSystem** (639 lines): Production-ready with full features
+- **MultiSensorFusionUltraFast** (514 lines): Speed-optimized with reduced features
 
 ## Performance Specifications
 
@@ -139,6 +143,24 @@ The Multi-Sensor Fusion System achieves **excellent real-time performance** suit
 - **Detailed Results**: 26.07ms comprehensive test, 100% success across all scenes
 - **Test Coverage**: 1,000 frames with ORIGINAL complexity and weather variations
 - **Data Size**: Full resolution sensor data with realistic complexity scaling
+
+## 🔧 **Module Architecture Comparison**
+
+### **MultiSensorFusionSystem (Production - 639 lines)**
+- **Target**: <100ms real-time processing
+- **Features**: Full fault tolerance, system monitoring, debug outputs
+- **Architecture**: Comprehensive with error recovery and health monitoring
+- **Use Case**: Production autonomous vehicles (safety-critical)
+- **Performance**: 9.68ms average with full feature set
+
+### **MultiSensorFusionUltraFast (Speed-optimized - 514 lines)**
+- **Target**: <10μs ultra-fast processing
+- **Features**: Minimal monitoring, pre-computed weights, no fault tolerance
+- **Architecture**: Streamlined for maximum speed
+- **Use Case**: Research/benchmarking (not production-safe)
+- **Performance**: Theoretical <10μs but lacks safety features
+
+**Current test results (9.68ms) are for the production MultiSensorFusionSystem module.**
 
 ## 🔧 Advanced Technical Optimizations
 
